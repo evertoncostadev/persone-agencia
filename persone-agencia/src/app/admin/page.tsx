@@ -3,22 +3,34 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { 
-  LayoutDashboard, Users, UserCheck, UserX, Search, Filter, 
-  MapPin, Phone, MessageCircle, ChevronDown, Award, Calendar
+  LayoutDashboard, Users, UserX, Search, MapPin, 
+  Phone, Trash2, Edit, X, Save, Filter, ChevronDown, CheckCircle 
 } from 'lucide-react';
 
 export default function AdminDashboard() {
-  // --- ESTADOS ---
+  // --- ESTADOS GERAIS ---
+  const [view, setView] = useState<'dashboard' | 'promotores'>('dashboard'); // Controla qual tela aparece
   const [candidatos, setCandidatos] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [logado, setLogado] = useState(false);
   const [senha, setSenha] = useState('');
-  const [logado, setLogado] = useState(false); // Mude para true para testar sem senha
 
-  // Filtros
+  // --- ESTADOS DE EDIÇÃO/MODAL ---
+  const [editingCandidato, setEditingCandidato] = useState<any | null>(null);
+  const [modalOpen, setModalOpen] = useState(false);
+
+  // --- ESTADOS DE FILTRO ---
   const [busca, setBusca] = useState('');
+  const [filtroUf, setFiltroUf] = useState('');
   const [filtroCidade, setFiltroCidade] = useState('');
   const [filtroGenero, setFiltroGenero] = useState('');
   const [filtroStatus, setFiltroStatus] = useState('todos');
+
+  // Lista de estados para o filtro
+  const estadosBrasileiros = [
+    'AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MT', 'MS', 'MG', 
+    'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN', 'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO'
+  ];
 
   // --- 1. CARREGAR DADOS ---
   useEffect(() => {
@@ -31,306 +43,293 @@ export default function AdminDashboard() {
     const { data, error } = await supabase
       .from('candidatos')
       .select('*')
-      .order('created_at', { ascending: false }); // Mais recentes primeiro
+      .order('created_at', { ascending: false });
     
-    if (error) console.error('Erro ao buscar:', error);
+    if (error) console.error('Erro:', error);
     else setCandidatos(data || []);
     setLoading(false);
   };
 
-  // --- 2. LÓGICA DE FILTROS (TEMPO REAL) ---
+  // --- 2. LÓGICA DE FILTROS ---
+  const cidadesDisponiveis = Array.from(new Set(
+    candidatos
+      .filter(c => filtroUf ? c.estado === filtroUf : true)
+      .map(c => c.cidade)
+  )).sort();
+
   const candidatosFiltrados = candidatos.filter((c) => {
     const matchNome = c.nome.toLowerCase().includes(busca.toLowerCase());
+    const matchUf = filtroUf ? c.estado === filtroUf : true;
     const matchCidade = filtroCidade ? c.cidade === filtroCidade : true;
     const matchGenero = filtroGenero ? c.genero === filtroGenero : true;
     const matchStatus = filtroStatus === 'todos' ? true : c.status === filtroStatus;
     
-    return matchNome && matchCidade && matchGenero && matchStatus;
+    return matchNome && matchUf && matchCidade && matchGenero && matchStatus;
   });
 
-  // --- 3. DADOS PARA OS GRÁFICOS (ÍNDICES) ---
+  // --- 3. AÇÕES (CRUD) ---
+  const handleDelete = async (id: number) => {
+    if (!confirm("Tem certeza que deseja EXCLUIR este candidato? Essa ação não pode ser desfeita.")) return;
+    
+    const { error } = await supabase.from('candidatos').delete().eq('id', id);
+    if (!error) {
+      setCandidatos(prev => prev.filter(c => c.id !== id));
+      alert("Candidato excluído com sucesso!");
+    } else {
+      alert("Erro ao excluir.");
+    }
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingCandidato) return;
+    
+    const { error } = await supabase
+      .from('candidatos')
+      .update({ 
+        nome: editingCandidato.nome, 
+        whatsapp: editingCandidato.whatsapp,
+        status: editingCandidato.status,
+        nota10: editingCandidato.nota10
+      })
+      .eq('id', editingCandidato.id);
+
+    if (!error) {
+      setCandidatos(prev => prev.map(c => c.id === editingCandidato.id ? editingCandidato : c));
+      setModalOpen(false);
+      setEditingCandidato(null);
+    } else {
+      alert("Erro ao atualizar.");
+    }
+  };
+
+  const openEdit = (candidato: any) => {
+    setEditingCandidato({ ...candidato });
+    setModalOpen(true);
+  };
+
+  // --- 4. DADOS DASHBOARD ---
   const stats = {
     total: candidatos.length,
     pendentes: candidatos.filter(c => c.status === 'pendente').length,
-    aprovados: candidatos.filter(c => c.status === 'aprovado').length,
     homens: candidatos.filter(c => c.genero?.includes('Homem')).length,
     mulheres: candidatos.filter(c => c.genero?.includes('Mulher')).length,
   };
 
-  // --- 4. AÇÕES DE ADMIN ---
-  const handleAprovar = async (id: number, nome: string, telefone: string) => {
-    // 1. Atualiza no banco
-    const { error } = await supabase.from('candidatos').update({ status: 'aprovado' }).eq('id', id);
-    
-    if (!error) {
-      // 2. Atualiza a tela sem recarregar
-      setCandidatos(prev => prev.map(c => c.id === id ? { ...c, status: 'aprovado' } : c));
-      
-      // 3. Gera link do Zap com convite
-      const linkGrupo = "https://chat.whatsapp.com/SEU_LINK_DO_GRUPO_AQUI"; // Coloque seu link real aqui
-      const mensagem = `Olá ${nome.split(' ')[0]}! Parabéns, seu perfil na Persone foi aprovado! 🤩 Aqui está o link para entrar no nosso grupo exclusivo de vagas: ${linkGrupo}`;
-      const urlZap = `https://wa.me/55${telefone.replace(/\D/g, '')}?text=${encodeURIComponent(mensagem)}`;
-      
-      window.open(urlZap, '_blank');
-    }
-  };
 
-  const handleArquivar = async (id: number) => {
-    const { error } = await supabase.from('candidatos').update({ status: 'arquivado' }).eq('id', id);
-    if (!error) {
-      setCandidatos(prev => prev.map(c => c.id === id ? { ...c, status: 'arquivado' } : c));
-    }
-  };
-
-  // --- TELA DE LOGIN SIMPLES ---
+  // --- TELA DE LOGIN ---
   if (!logado) {
     return (
-      <div className="min-h-screen bg-[#7A1B8F] flex items-center justify-center p-4">
-        <div className="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-md text-center">
-          <h1 className="text-2xl font-bold text-[#7A1B8F] mb-4">Área Restrita 🔒</h1>
+      <div className="min-h-screen bg-[#2D0A35] flex items-center justify-center p-4">
+        <div className="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-sm text-center">
+          <h1 className="text-3xl font-serif font-bold text-[#7A1B8F] mb-6 italic">persone</h1>
           <input 
-            type="password" 
-            placeholder="Senha de Acesso" 
-            className="w-full p-3 border-2 border-slate-200 rounded-xl mb-4 text-center text-slate-800 outline-none focus:border-[#FFD700]"
-            value={senha}
-            onChange={(e) => setSenha(e.target.value)}
+            type="password" placeholder="Senha Admin" 
+            className="w-full p-3 border rounded-xl mb-4 text-center outline-none focus:border-[#7A1B8F]"
+            value={senha} onChange={(e) => setSenha(e.target.value)}
           />
-          <button 
-            onClick={() => senha === "admin123" ? setLogado(true) : alert("Senha incorreta")} // SENHA TEMPORÁRIA
-            className="w-full bg-[#FFD700] text-[#7A1B8F] font-black py-3 rounded-xl uppercase hover:scale-105 transition-transform"
-          >
-            Entrar
-          </button>
+          <button onClick={() => senha === "admin123" ? setLogado(true) : alert("Senha errada")} 
+            className="w-full bg-[#7A1B8F] text-white font-bold py-3 rounded-xl hover:bg-purple-900">ENTRAR</button>
         </div>
       </div>
     );
   }
 
-  // --- DASHBOARD PRINCIPAL ---
   return (
     <div className="flex min-h-screen bg-slate-100 font-sans text-slate-800">
       
-      {/* SIDEBAR (LATERAL ESQUERDA) */}
-      <aside className="w-64 bg-[#2D0A35] text-white hidden md:flex flex-col fixed h-full z-10">
-        <div className="p-6">
-          <h1 className="text-2xl font-serif italic font-bold text-[#FFD700]">persone</h1>
-          <p className="text-[10px] tracking-widest opacity-70 uppercase">Painel Admin</p>
+      {/* SIDEBAR */}
+      <aside className="w-64 bg-[#2D0A35] text-white hidden md:flex flex-col fixed h-full z-10 shadow-xl">
+        <div className="p-8">
+          <h1 className="text-3xl font-serif italic font-bold text-[#FFD700]">persone</h1>
         </div>
-        
-        <nav className="flex-1 px-4 space-y-2 mt-4">
-          <div className="flex items-center gap-3 p-3 bg-[#7A1B8F] rounded-xl text-[#FFD700] font-bold cursor-pointer shadow-lg">
+        <nav className="flex-1 px-4 space-y-2">
+          <button onClick={() => setView('dashboard')} className={`w-full flex items-center gap-3 p-3 rounded-xl font-bold transition-all ${view === 'dashboard' ? 'bg-[#7A1B8F] text-[#FFD700]' : 'text-slate-400 hover:text-white'}`}>
+            <LayoutDashboard size={20} /> Visão Geral
+          </button>
+          <button onClick={() => setView('promotores')} className={`w-full flex items-center gap-3 p-3 rounded-xl font-bold transition-all ${view === 'promotores' ? 'bg-[#7A1B8F] text-[#FFD700]' : 'text-slate-400 hover:text-white'}`}>
             <Users size={20} /> Promotores
-          </div>
-          <div className="flex items-center gap-3 p-3 text-slate-400 hover:text-white hover:bg-white/10 rounded-xl cursor-not-allowed transition-all">
-            <LayoutDashboard size={20} /> Eventos (Breve)
-          </div>
+          </button>
         </nav>
-
-        <div className="p-6 text-xs text-center opacity-40">
-          v1.0.0
-        </div>
       </aside>
 
-      {/* CONTEÚDO PRINCIPAL (DIREITA) */}
+      {/* CONTEÚDO */}
       <main className="flex-1 md:ml-64 p-4 md:p-8">
         
-        {/* 1. CABEÇALHO E ÍNDICES (GRÁFICOS SIMPLIFICADOS) */}
-        <div className="mb-8">
-          <h2 className="text-2xl font-bold text-slate-700 mb-6">Visão Geral</h2>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        {/* === VIEW: DASHBOARD (HOME) === */}
+        {view === 'dashboard' && (
+          <div className="animate-in fade-in duration-500">
+            <h2 className="text-2xl font-bold text-[#2D0A35] mb-6">Dashboard</h2>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="bg-white p-6 rounded-2xl shadow-md border-l-8 border-[#7A1B8F]">
+                <span className="text-xs font-bold text-slate-400 uppercase">Total Cadastrados</span>
+                <div className="text-5xl font-black text-[#2D0A35] mt-2">{stats.total}</div>
+              </div>
+              <div className="bg-white p-6 rounded-2xl shadow-md border-l-8 border-[#FFD700]">
+                <span className="text-xs font-bold text-slate-400 uppercase">Aguardando Análise</span>
+                <div className="text-5xl font-black text-[#2D0A35] mt-2">{stats.pendentes}</div>
+              </div>
+              <div className="bg-white p-6 rounded-2xl shadow-md">
+                <span className="text-xs font-bold text-slate-400 uppercase">Gênero</span>
+                <div className="mt-4 space-y-2">
+                  <div className="flex justify-between text-xs font-bold"><span>Mulheres</span> <span>{stats.mulheres}</span></div>
+                  <div className="h-2 bg-slate-100 rounded-full"><div className="h-full bg-pink-500 rounded-full" style={{width: `${(stats.mulheres/stats.total)*100}%`}}></div></div>
+                  <div className="flex justify-between text-xs font-bold"><span>Homens</span> <span>{stats.homens}</span></div>
+                  <div className="h-2 bg-slate-100 rounded-full"><div className="h-full bg-blue-500 rounded-full" style={{width: `${(stats.homens/stats.total)*100}%`}}></div></div>
+                </div>
+              </div>
+            </div>
             
-            {/* Card Total */}
-            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-              <div className="flex justify-between items-start mb-2">
-                <span className="text-slate-500 text-xs font-bold uppercase">Total Base</span>
-                <Users className="text-[#7A1B8F] opacity-20" />
-              </div>
-              <div className="text-4xl font-black text-slate-800">{stats.total}</div>
-            </div>
-
-            {/* Card Pendentes (Atenção) */}
-            <div className="bg-white p-6 rounded-2xl shadow-sm border-l-4 border-yellow-400">
-              <div className="flex justify-between items-start mb-2">
-                <span className="text-yellow-600 text-xs font-bold uppercase">Para Analisar</span>
-                <ClockIcon className="text-yellow-400" />
-              </div>
-              <div className="text-4xl font-black text-slate-800">{stats.pendentes}</div>
-              <p className="text-xs text-slate-400 mt-1">Requerem atenção</p>
-            </div>
-
-            {/* Card Gênero (Barra Visual) */}
-            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 col-span-1 md:col-span-2">
-              <span className="text-slate-500 text-xs font-bold uppercase mb-4 block">Distribuição</span>
-              <div className="space-y-3">
-                <div>
-                  <div className="flex justify-between text-xs mb-1"><span>Mulheres</span> <span>{stats.mulheres}</span></div>
-                  <div className="w-full bg-slate-100 rounded-full h-2"><div className="bg-pink-400 h-2 rounded-full" style={{ width: `${(stats.mulheres / stats.total) * 100}%` }}></div></div>
-                </div>
-                <div>
-                  <div className="flex justify-between text-xs mb-1"><span>Homens</span> <span>{stats.homens}</span></div>
-                  <div className="w-full bg-slate-100 rounded-full h-2"><div className="bg-blue-400 h-2 rounded-full" style={{ width: `${(stats.homens / stats.total) * 100}%` }}></div></div>
-                </div>
-              </div>
+            <div className="mt-10 p-10 bg-white rounded-3xl border border-dashed border-slate-300 text-center">
+              <p className="text-slate-400 font-bold">Mais métricas em breve...</p>
             </div>
           </div>
-        </div>
+        )}
 
-        {/* 2. BARRA DE FILTROS INTELIGENTE */}
-        <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 mb-6 sticky top-2 z-20">
-          <div className="flex flex-col md:flex-row gap-4 items-center">
+        {/* === VIEW: PROMOTORES (LISTA) === */}
+        {view === 'promotores' && (
+          <div className="animate-in fade-in duration-500">
+            <h2 className="text-2xl font-bold text-[#2D0A35] mb-6">Banco de Talentos</h2>
             
-            {/* Busca Nome */}
-            <div className="flex items-center bg-slate-100 rounded-xl px-4 py-2 w-full md:w-1/3">
-              <Search className="text-slate-400 mr-2" size={18} />
-              <input 
-                placeholder="Buscar por nome..." 
-                className="bg-transparent outline-none text-sm w-full"
-                value={busca}
-                onChange={(e) => setBusca(e.target.value)}
-              />
-            </div>
-
-            {/* Filtros Dropdown */}
-            <div className="flex gap-2 w-full md:w-auto overflow-x-auto">
-              <select 
-                className="bg-slate-50 border border-slate-200 text-slate-600 text-sm rounded-xl px-4 py-2 outline-none focus:border-[#7A1B8F]"
-                value={filtroStatus}
-                onChange={(e) => setFiltroStatus(e.target.value)}
-              >
-                <option value="todos">Status: Todos</option>
-                <option value="pendente">🟡 Pendentes</option>
-                <option value="aprovado">🟢 Aprovados</option>
-                <option value="arquivado">⚫ Arquivados</option>
+            {/* Filtros */}
+            <div className="bg-white p-4 rounded-2xl shadow-sm mb-6 flex flex-wrap gap-3 items-center border border-slate-200 sticky top-0 z-20">
+              <div className="flex items-center bg-slate-100 rounded-lg px-3 py-2 flex-1 min-w-[200px]">
+                <Search size={16} className="text-slate-400 mr-2"/>
+                <input placeholder="Buscar nome..." className="bg-transparent text-sm w-full outline-none" value={busca} onChange={e => setBusca(e.target.value)}/>
+              </div>
+              
+              <select className="bg-slate-50 border p-2 rounded-lg text-sm outline-none" value={filtroUf} onChange={e => {setFiltroUf(e.target.value); setFiltroCidade('');}}>
+                <option value="">UF: Todos</option>
+                {estadosBrasileiros.map(uf => <option key={uf} value={uf}>{uf}</option>)}
               </select>
 
-              <select 
-                className="bg-slate-50 border border-slate-200 text-slate-600 text-sm rounded-xl px-4 py-2 outline-none focus:border-[#7A1B8F]"
-                value={filtroCidade}
-                onChange={(e) => setFiltroCidade(e.target.value)}
-              >
+              <select className="bg-slate-50 border p-2 rounded-lg text-sm outline-none" value={filtroCidade} onChange={e => setFiltroCidade(e.target.value)} disabled={!filtroUf}>
                 <option value="">Cidade: Todas</option>
-                {/* Aqui extraímos cidades únicas da lista */}
-                {Array.from(new Set(candidatos.map(c => c.cidade))).map(c => (
-                  <option key={c} value={c}>{c}</option>
-                ))}
+                {cidadesDisponiveis.map(c => <option key={c} value={c}>{c}</option>)}
               </select>
 
-              <select 
-                className="bg-slate-50 border border-slate-200 text-slate-600 text-sm rounded-xl px-4 py-2 outline-none focus:border-[#7A1B8F]"
-                value={filtroGenero}
-                onChange={(e) => setFiltroGenero(e.target.value)}
-              >
-                <option value="">Gênero: Todos</option>
-                <option value="Mulher Cisgênero">Mulheres Cis</option>
-                <option value="Homem Cisgênero">Homens Cis</option>
-                {/* Adicione outros se precisar */}
+              <select className="bg-slate-50 border p-2 rounded-lg text-sm outline-none" value={filtroStatus} onChange={e => setFiltroStatus(e.target.value)}>
+                <option value="todos">Status: Todos</option>
+                <option value="pendente">Pendente</option>
+                <option value="aprovado">Aprovado</option>
               </select>
             </div>
-          </div>
-        </div>
 
-        {/* 3. LISTA DE CANDIDATOS (GRID) */}
-        {loading ? (
-           <div className="text-center py-20 text-slate-400"><Loader2 className="animate-spin mx-auto mb-2"/> Carregando talentos...</div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 pb-20">
-            {candidatosFiltrados.map((cand) => (
-              <div key={cand.id} className="bg-white rounded-2xl border border-slate-200 overflow-hidden hover:shadow-xl transition-all group relative">
-                
-                {/* Badge de Status */}
-                <div className={`absolute top-3 right-3 px-2 py-1 rounded-full text-[10px] font-bold uppercase z-10 
-                  ${cand.status === 'aprovado' ? 'bg-green-100 text-green-700' : cand.status === 'arquivado' ? 'bg-gray-100 text-gray-500' : 'bg-yellow-100 text-yellow-700'}`}>
-                  {cand.status}
-                </div>
+            {/* Grid de Cards ROXOS */}
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+              {candidatosFiltrados.map((cand) => (
+                <div key={cand.id} className="bg-[#4a1057] rounded-xl overflow-hidden shadow-lg hover:shadow-2xl transition-all group relative border border-[#7A1B8F]">
+                  
+                  {/* Foto Menor */}
+                  <div className="aspect-[3/4] bg-black/50 relative overflow-hidden">
+                    <img src={cand.foto_perfil_url} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 opacity-90 group-hover:opacity-100" />
+                    
+                    {/* Status Badge */}
+                    <div className={`absolute top-2 right-2 px-2 py-0.5 rounded text-[10px] font-bold uppercase ${cand.status === 'aprovado' ? 'bg-green-500 text-white' : 'bg-yellow-400 text-black'}`}>
+                      {cand.status}
+                    </div>
+                  </div>
 
-                {/* Foto */}
-                <div className="aspect-[3/4] bg-slate-100 relative">
-                  {cand.foto_perfil_url ? (
-                    <img src={cand.foto_perfil_url} className="w-full h-full object-cover" alt={cand.nome} />
-                  ) : (
-                    <div className="flex items-center justify-center h-full text-slate-300"><UserX size={48}/></div>
-                  )}
-                  {/* Overlay com info rápida */}
-                  <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-4 text-white">
-                    <h3 className="font-bold text-lg leading-tight">{cand.nome}</h3>
-                    <div className="flex items-center gap-1 text-xs opacity-90 mt-1">
-                      <MapPin size={12}/> {cand.cidade}
+                  {/* Info Card */}
+                  <div className="p-3 text-white">
+                    <h3 className="font-bold text-sm truncate">{cand.nome}</h3>
+                    <div className="flex items-center gap-1 text-[10px] text-white/70 mb-2">
+                      <MapPin size={10}/> {cand.cidade}-{cand.estado}
+                    </div>
+                    
+                    <div className="grid grid-cols-2 gap-2 mt-3">
+                      <button onClick={() => openEdit(cand)} className="bg-white/10 hover:bg-white/20 py-1.5 rounded-lg text-[10px] font-bold flex items-center justify-center gap-1 transition-colors">
+                        <Edit size={12}/> Detalhes
+                      </button>
+                      <button onClick={() => handleDelete(cand.id)} className="bg-red-500/20 hover:bg-red-500 py-1.5 rounded-lg text-[10px] font-bold text-red-200 hover:text-white flex items-center justify-center gap-1 transition-colors">
+                        <Trash2 size={12}/> Excluir
+                      </button>
                     </div>
                   </div>
                 </div>
-
-                {/* Corpo do Card */}
-                <div className="p-4 space-y-3">
-                  <div className="flex justify-between text-xs text-slate-500 font-bold uppercase tracking-wider">
-                    <span>{cand.altura}m</span>
-                    <span>Man: {cand.manequim}</span>
-                    <span>{new Date().getFullYear() - new Date(cand.nascimento).getFullYear()} anos</span>
-                  </div>
-                  
-                  {/* Nota 10 (Habilidade) */}
-                  <div className="bg-purple-50 p-2 rounded-lg text-xs text-[#7A1B8F]">
-                    <span className="font-bold">Nota 10:</span> {cand.nota10?.substring(0, 50)}...
-                  </div>
-
-                  {/* Botões de Ação */}
-                  <div className="grid grid-cols-2 gap-2 mt-2">
-                    {cand.status === 'pendente' && (
-                       <button 
-                         onClick={() => handleAprovar(cand.id, cand.nome, cand.whatsapp)}
-                         className="col-span-2 bg-green-500 hover:bg-green-600 text-white py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-2"
-                       >
-                         <CheckCircle size={14}/> Aprovar & Chamar
-                       </button>
-                    )}
-                    
-                    {cand.status === 'aprovado' && (
-                       <button 
-                         onClick={() => window.open(`https://wa.me/55${cand.whatsapp.replace(/\D/g, '')}`, '_blank')}
-                         className="col-span-2 bg-[#25D366] hover:bg-green-600 text-white py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-2"
-                       >
-                         <MessageCircle size={14}/> WhatsApp
-                       </button>
-                    )}
-
-                    {cand.status !== 'arquivado' && (
-                      <button 
-                        onClick={() => handleArquivar(cand.id)}
-                        className="col-span-2 border border-slate-200 text-slate-400 hover:bg-slate-50 py-2 rounded-xl text-xs font-bold"
-                      >
-                        Arquivar
-                      </button>
-                    )}
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-        
-        {/* Carregar Mais (Placeholder visual, pois o scroll já carrega tudo nesse exemplo simples) */}
-        {candidatosFiltrados.length > 20 && (
-          <div className="flex justify-center mt-8">
-             <ChevronDown className="animate-bounce text-slate-400"/>
+              ))}
+            </div>
           </div>
         )}
       </main>
+
+      {/* === MODAL DE EDIÇÃO / DETALHES === */}
+      {modalOpen && editingCandidato && (
+        <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-300">
+            {/* Header Modal */}
+            <div className="bg-[#7A1B8F] p-4 flex justify-between items-center">
+              <h3 className="text-white font-bold">Editar Candidato</h3>
+              <button onClick={() => setModalOpen(false)} className="text-white/70 hover:text-white"><X size={20}/></button>
+            </div>
+            
+            <div className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
+              <div className="flex gap-4">
+                <img src={editingCandidato.foto_perfil_url} className="w-20 h-20 rounded-full object-cover border-2 border-[#7A1B8F]" />
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 uppercase">Nome</label>
+                  <input className="w-full font-bold text-lg border-b border-slate-300 outline-none focus:border-[#7A1B8F]" 
+                    value={editingCandidato.nome} 
+                    onChange={e => setEditingCandidato({...editingCandidato, nome: e.target.value})}
+                  />
+                  <div className="mt-2 flex gap-2">
+                    <a href={editingCandidato.foto_perfil_url} target="_blank" className="text-xs text-blue-500 hover:underline">Ver Foto 1</a>
+                    {editingCandidato.fotos_extras_urls?.map((url:string, i:number) => (
+                      <a key={i} href={url} target="_blank" className="text-xs text-blue-500 hover:underline">Foto {i+2}</a>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 uppercase">Status</label>
+                  <select className="w-full p-2 bg-slate-100 rounded-lg text-sm" 
+                    value={editingCandidato.status}
+                    onChange={e => setEditingCandidato({...editingCandidato, status: e.target.value})}
+                  >
+                    <option value="pendente">🟡 Pendente</option>
+                    <option value="aprovado">🟢 Aprovado</option>
+                    <option value="arquivado">⚫ Arquivado</option>
+                  </select>
+                </div>
+                <div>
+                   <label className="block text-xs font-bold text-slate-500 uppercase">WhatsApp</label>
+                   <input className="w-full p-2 bg-slate-100 rounded-lg text-sm"
+                     value={editingCandidato.whatsapp}
+                     onChange={e => setEditingCandidato({...editingCandidato, whatsapp: e.target.value})}
+                   />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-500 uppercase">Nota 10 (Habilidade)</label>
+                <textarea className="w-full p-3 bg-slate-50 border rounded-xl text-sm h-20"
+                  value={editingCandidato.nota10}
+                  onChange={e => setEditingCandidato({...editingCandidato, nota10: e.target.value})}
+                />
+              </div>
+
+               {/* Dados Bancários (Apenas Leitura) */}
+               <div className="bg-slate-50 p-3 rounded-xl border border-slate-200">
+                <span className="text-xs font-bold text-slate-500 uppercase block mb-1">Dados Bancários / Pix</span>
+                <pre className="text-xs text-slate-600 whitespace-pre-wrap font-mono">
+                  {JSON.stringify(editingCandidato.dados_bancarios, null, 2)}
+                </pre>
+              </div>
+            </div>
+
+            {/* Footer Modal */}
+            <div className="p-4 border-t bg-slate-50 flex justify-end gap-2">
+              <button onClick={() => setModalOpen(false)} className="px-4 py-2 text-slate-500 font-bold text-sm hover:bg-slate-200 rounded-lg">Cancelar</button>
+              <button onClick={handleSaveEdit} className="px-6 py-2 bg-[#7A1B8F] text-white font-bold text-sm rounded-lg flex items-center gap-2 hover:bg-purple-900">
+                <Save size={16}/> Salvar Alterações
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
 
-// Ícones adicionais
-function ClockIcon(props: any) {
-  return (
-    <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-  )
-}
-function CheckCircle(props: any) {
-    return (
-      <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
-    )
-  }
-function Loader2(props: any) {
-    return (
-        <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
-    )
-}
