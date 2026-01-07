@@ -139,47 +139,70 @@ export default function AdminDashboard() {
           </div>
         )}
 
-        {/* VIEW: PROMOTORES (LAYOUT HORIZONTAL) */}
+        {/* VIEW: PROMOTORES (LAYOUT HORIZONTAL - ROXO) */}
         {view === 'promotores' && (
           <div className="animate-in fade-in duration-500">
             <h2 className="text-2xl font-bold text-[#2D0A35] mb-6">Banco de Talentos</h2>
-            {/* Filtros */}
+            
+            {/* Filtros VISÍVEIS */}
             <div className="bg-white p-4 rounded-2xl shadow-sm mb-6 flex flex-wrap gap-3 items-center border border-slate-200 sticky top-0 z-20">
-              <div className="flex items-center bg-slate-100 rounded-lg px-3 py-2 flex-1 min-w-[200px]"><Search size={16} className="text-slate-400 mr-2"/><input placeholder="Buscar nome..." className="bg-transparent text-sm w-full outline-none" value={busca} onChange={e => setBusca(e.target.value)}/></div>
-              <select className="bg-slate-50 border p-2 rounded-lg text-sm outline-none" value={filtroUf} onChange={e => {setFiltroUf(e.target.value); setFiltroCidade('');}}><option value="">UF: Todos</option>{estadosBrasileiros.map(uf => <option key={uf} value={uf}>{uf}</option>)}</select>
-              <select className="bg-slate-50 border p-2 rounded-lg text-sm outline-none" value={filtroCidade} onChange={e => setFiltroCidade(e.target.value)} disabled={!filtroUf}><option value="">Cidade: Todas</option>{cidadesDisponiveis.map(c => <option key={c} value={c}>{c}</option>)}</select>
-              <select className="bg-slate-50 border p-2 rounded-lg text-sm outline-none" value={filtroStatus} onChange={e => setFiltroStatus(e.target.value)}><option value="todos">Status: Todos</option><option value="pendente">Pendente</option><option value="aprovado">Aprovado</option></select>
+              <div className="flex items-center bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 flex-1 min-w-[200px] focus-within:border-[#7A1B8F] transition-colors">
+                <Search size={16} className="text-[#7A1B8F] mr-2"/>
+                <input placeholder="Buscar nome..." className="bg-transparent text-sm w-full outline-none font-medium text-slate-700" value={busca} onChange={e => setBusca(e.target.value)}/>
+              </div>
+              
+              <select className="bg-slate-50 border border-slate-300 focus:border-[#7A1B8F] p-2.5 rounded-lg text-sm outline-none text-slate-700 font-bold cursor-pointer transition-colors" value={filtroUf} onChange={e => {setFiltroUf(e.target.value); setFiltroCidade('');}}>
+                <option value="">📍 UF: Todos</option>
+                {estadosBrasileiros.map(uf => <option key={uf} value={uf}>{uf}</option>)}
+              </select>
+              
+              <select className="bg-slate-50 border border-slate-300 focus:border-[#7A1B8F] p-2.5 rounded-lg text-sm outline-none text-slate-700 font-bold cursor-pointer transition-colors disabled:opacity-50" value={filtroCidade} onChange={e => setFiltroCidade(e.target.value)} disabled={!filtroUf}>
+                <option value="">🏙️ Cidade: Todas</option>
+                {cidadesDisponiveis.map(c => <option key={c} value={c}>{c}</option>)}
+              </select>
+              
+              <select className="bg-slate-50 border border-slate-300 focus:border-[#7A1B8F] p-2.5 rounded-lg text-sm outline-none text-slate-700 font-bold cursor-pointer transition-colors" value={filtroStatus} onChange={e => setFiltroStatus(e.target.value)}>
+                <option value="todos">Status: Todos</option>
+                <option value="pendente">🟡 Pendente</option>
+                <option value="aprovado">🟢 Aprovado</option>
+              </select>
             </div>
 
-            {/* GRID DE CARDS HORIZONTAIS */}
+            {/* GRID DE CARDS HORIZONTAIS (ROXOS) */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               {candidatosFiltrados.map((cand) => {
                 const idade = cand.nascimento ? new Date().getFullYear() - new Date(cand.nascimento).getFullYear() : '?';
                 return (
-                <div key={cand.id} className="bg-white rounded-2xl overflow-hidden shadow-md hover:shadow-xl transition-all flex border border-slate-100 group relative h-40">
+                <div key={cand.id} className="bg-[#2D0A35] rounded-2xl overflow-hidden shadow-lg hover:shadow-2xl transition-all flex border border-[#7A1B8F]/30 group relative h-40">
                   
                   {/* FOTO */}
-                  <div className="w-40 h-40 relative shrink-0">
-                    <img src={cand.foto_perfil_url} className="w-full h-full object-cover" />
+                  <div className="w-40 h-40 relative shrink-0 border-r border-white/10">
+                    <img src={cand.foto_perfil_url} className="w-full h-full object-cover opacity-90 group-hover:opacity-100 transition-opacity" />
                     <div className={`absolute top-2 left-2 px-2 py-0.5 rounded text-[10px] font-bold uppercase ${cand.status === 'aprovado' ? 'bg-green-500 text-white' : cand.status === 'arquivado' ? 'bg-gray-500 text-white' : 'bg-yellow-400 text-black'}`}>
                       {cand.status}
                     </div>
                   </div>
 
-                  {/* INFO */}
+                  {/* INFO CARD */}
                   <div className="p-4 flex flex-col justify-between flex-1">
                     <div>
                       <div className="flex justify-between items-start">
-                        <h3 className="font-bold text-lg text-[#2D0A35] truncate pr-16">{cand.nome}</h3>
-                        <div className="flex gap-1 absolute top-3 right-3 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity bg-white p-1 rounded-lg shadow-sm border border-slate-100">
-                          <button onClick={() => openEdit(cand)} className="p-1.5 text-slate-400 hover:text-[#7A1B8F] hover:bg-purple-50 rounded-md transition-colors" title="Ver Detalhes"><Eye size={16}/></button>
-                          <button onClick={() => handleDelete(cand.id)} className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-md transition-colors" title="Excluir"><Trash2 size={16}/></button>
+                        {/* Nome Branco */}
+                        <h3 className="font-bold text-lg text-white truncate pr-16">{cand.nome}</h3>
+                        
+                        {/* Botões de Ação */}
+                        <div className="flex gap-1 absolute top-3 right-3 opacity-100 transition-opacity bg-white/10 backdrop-blur-sm p-1 rounded-lg border border-white/10">
+                          <button onClick={() => openEdit(cand)} className="p-1.5 text-slate-300 hover:text-white hover:bg-white/20 rounded-md transition-colors" title="Ver Detalhes"><Eye size={16}/></button>
+                          <button onClick={() => handleDelete(cand.id)} className="p-1.5 text-slate-300 hover:text-red-400 hover:bg-white/20 rounded-md transition-colors" title="Excluir"><Trash2 size={16}/></button>
                         </div>
                       </div>
-                      <div className="flex items-center gap-1 text-xs text-slate-500 mt-1">
+                      
+                      <div className="flex items-center gap-1 text-xs text-white/70 mt-1">
                         <MapPin size={12}/> {cand.cidade}-{cand.estado}
                       </div>
-                      <div className="flex gap-3 text-xs text-slate-700 font-bold mt-3 bg-slate-50 p-2 rounded-lg inline-block">
+                      
+                      {/* Dados (Fundo Translúcido) */}
+                      <div className="flex gap-3 text-xs text-white font-bold mt-3 bg-white/10 border border-white/10 p-2 rounded-lg inline-block">
                         <span>{idade} anos</span> • <span>{cand.altura}m</span> • <span>Man: {cand.manequim}</span>
                       </div>
                     </div>
@@ -191,17 +214,15 @@ export default function AdminDashboard() {
         )}
       </main>
 
-      {/* === MODAL DE PERFIL COMPLETO === */}
+      {/* === MODAL DE PERFIL COMPLETO (MANTIDO) === */}
       {modalOpen && editingCandidato && (
         <div className="fixed inset-0 bg-[#2D0A35]/80 z-50 flex items-center justify-center p-4 backdrop-blur-sm overflow-y-auto">
           <div className="bg-slate-100 rounded-3xl w-full max-w-3xl my-8 overflow-hidden animate-in zoom-in-95 duration-300 shadow-2xl">
-            
             {/* Header Modal */}
             <div className="bg-[#7A1B8F] p-6 text-white flex justify-between items-start relative overflow-hidden">
               <div className="flex gap-4 items-center z-10">
                 <img src={editingCandidato.foto_perfil_url} className="w-24 h-24 rounded-full object-cover border-4 border-white shadow-md" />
                 <div className="flex-1 min-w-0">
-                   {/* Nome Editável (COM PROTEÇÃO) */}
                    <input className="bg-transparent text-2xl font-bold outline-none border-b border-white/30 focus:border-white mb-2 placeholder-white/50 w-full" 
                     value={editingCandidato.nome} 
                     onChange={e => editingCandidato && setEditingCandidato({...editingCandidato, nome: e.target.value})}
@@ -255,7 +276,7 @@ export default function AdminDashboard() {
                   </div>
                </div>
 
-               {/* Editáveis (COM PROTEÇÃO) */}
+               {/* Editáveis */}
                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="bg-purple-50 p-4 rounded-2xl border border-purple-100">
                     <label className="block text-xs font-bold text-[#7A1B8F] uppercase mb-2">Nota 10 (Habilidade)</label>
@@ -290,5 +311,4 @@ export default function AdminDashboard() {
     </div>
   );
 }
-
 
