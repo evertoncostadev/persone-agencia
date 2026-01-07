@@ -5,16 +5,16 @@ import { supabase } from '@/lib/supabaseClient';
 import { 
   LayoutDashboard, Users, Search, MapPin, Trash2, Edit, X, Save, 
   Eye, Mail, Instagram as InstaIcon, User, Calendar, 
-  ChevronLeft, ChevronRight, Maximize2, Phone, CreditCard, DollarSign
+  ChevronLeft, ChevronRight, Phone, CreditCard, DollarSign, FileText
 } from 'lucide-react';
 
-// Componente InfoItem Melhorado (Texto quebra linha e tem borda forte)
+// Componente InfoItem Compacto e Bonito
 const InfoItem = ({ icon, label, value, className = "" }: { icon: React.ReactNode, label: string, value: string | number | undefined | null, className?: string }) => (
-  <div className={`flex items-start gap-3 p-4 bg-white rounded-xl border-2 border-slate-100 shadow-sm hover:border-[#7A1B8F]/30 transition-all ${className}`}>
-    <div className="text-[#7A1B8F] mt-1 shrink-0 bg-purple-50 p-2 rounded-lg">{icon}</div>
+  <div className={`flex items-center gap-3 p-3 bg-white rounded-xl border border-slate-200 shadow-sm hover:border-[#7A1B8F]/30 transition-all ${className}`}>
+    <div className="text-[#7A1B8F] shrink-0 bg-purple-50 p-2 rounded-lg">{icon}</div>
     <div className="min-w-0 flex-1">
-      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-0.5">{label}</p>
-      <p className="text-sm font-bold text-slate-800 break-words leading-snug">{value || "Não informado"}</p>
+      <p className="text-[9px] font-black text-slate-400 uppercase tracking-wide">{label}</p>
+      <p className="text-xs font-bold text-slate-800 break-words leading-tight">{value || "-"}</p>
     </div>
   </div>
 );
@@ -174,127 +174,115 @@ export default function AdminDashboard() {
 
       {modalOpen && editingCandidato && (
         <div className="fixed inset-0 bg-[#2D0A35]/80 z-50 flex items-center justify-center p-4 backdrop-blur-sm overflow-y-auto">
-          <div className="bg-slate-50 rounded-3xl w-full max-w-4xl my-8 overflow-hidden animate-in zoom-in-95 duration-300 shadow-2xl border border-slate-200">
-            {/* Header com Foto de Fundo */}
-            <div className="bg-[#2D0A35] p-6 text-white relative overflow-hidden">
-               <div className="absolute top-0 right-0 p-10 opacity-10"><CreditCard size={120}/></div>
-               <div className="flex flex-col md:flex-row gap-6 items-center z-10 relative">
-                <img src={editingCandidato.foto_perfil_url} className="w-28 h-28 rounded-full object-cover border-4 border-[#FFD700] shadow-lg" />
-                <div className="flex-1 text-center md:text-left">
-                   <input className="bg-transparent text-2xl md:text-3xl font-black outline-none border-b-2 border-transparent focus:border-[#FFD700] mb-2 w-full text-center md:text-left text-white placeholder-white/50" 
-                    value={editingCandidato.nome} 
-                    onChange={e => editingCandidato && setEditingCandidato({...editingCandidato, nome: e.target.value})}
-                  />
-                  <div className="flex flex-wrap justify-center md:justify-start gap-3">
-                    <select className="bg-white/10 border border-white/20 text-sm font-bold rounded-lg px-3 py-1 outline-none cursor-pointer hover:bg-white/20 transition-colors text-white" 
+          {/* MODAL MAIS LARGO (max-w-5xl) E COM LAYOUT GRID OTIMIZADO */}
+          <div className="bg-slate-50 rounded-3xl w-full max-w-5xl my-4 overflow-hidden animate-in zoom-in-95 duration-300 shadow-2xl border border-slate-200">
+            
+            {/* Header */}
+            <div className="bg-[#2D0A35] p-5 text-white relative">
+               <div className="flex flex-col md:flex-row gap-4 items-center relative z-10">
+                 <img src={editingCandidato.foto_perfil_url} className="w-20 h-20 rounded-full object-cover border-4 border-[#FFD700] shadow-lg" />
+                 <div className="flex-1 text-center md:text-left min-w-0">
+                    <input className="bg-transparent text-2xl font-black outline-none border-b-2 border-transparent focus:border-[#FFD700] mb-1 w-full text-center md:text-left text-white placeholder-white/50" 
+                      value={editingCandidato.nome} 
+                      onChange={e => editingCandidato && setEditingCandidato({...editingCandidato, nome: e.target.value})}
+                    />
+                    <select className="bg-white/10 border border-white/20 text-xs font-bold rounded-lg px-3 py-1 outline-none cursor-pointer hover:bg-white/20 transition-colors text-white" 
                       value={editingCandidato.status}
                       onChange={e => editingCandidato && setEditingCandidato({...editingCandidato, status: e.target.value})}
                     >
-                      <option className="text-black" value="pendente">🟡 Pendente</option>
-                      <option className="text-black" value="aprovado">🟢 Aprovado</option>
-                      <option className="text-black" value="arquivado">⚫ Arquivado</option>
+                      <option className="text-black" value="pendente">🟡 Status: Pendente</option>
+                      <option className="text-black" value="aprovado">🟢 Status: Aprovado</option>
+                      <option className="text-black" value="arquivado">⚫ Status: Arquivado</option>
                     </select>
-                  </div>
-                </div>
-                <button onClick={() => setModalOpen(false)} className="bg-white/10 hover:bg-white/20 p-2 rounded-full text-white transition-colors absolute top-4 right-4"><X size={24}/></button>
-              </div>
+                 </div>
+                 <button onClick={() => setModalOpen(false)} className="bg-white/10 hover:bg-white/20 p-2 rounded-full text-white transition-colors"><X size={20}/></button>
+               </div>
             </div>
             
-            <div className="p-6 md:p-8 space-y-8 bg-slate-50">
-              
-              {/* GRID PRINCIPAL */}
-              <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
+            <div className="p-5 bg-slate-100">
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
                 
-                {/* COLUNA ESQUERDA (FOTOS & BIO) - SPAN 5 */}
-                <div className="md:col-span-5 space-y-6">
-                   {/* Carrossel */}
-                   <div className="aspect-[3/4] bg-slate-200 rounded-2xl relative group overflow-hidden shadow-md border-2 border-white">
+                {/* COLUNA ESQUERDA: FOTO + BIO (FIXA) */}
+                <div className="lg:col-span-4 flex flex-col gap-4">
+                   <div className="aspect-square bg-black rounded-2xl relative group overflow-hidden shadow-md border-2 border-white">
                       {allPhotos.length > 0 ? (
                         <>
-                          <img src={allPhotos[currentPhotoIndex]} className="w-full h-full object-cover cursor-pointer hover:opacity-90 transition-opacity" onClick={() => setFullScreenImage(allPhotos[currentPhotoIndex])}/>
-                          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/60 text-white text-xs px-3 py-1 rounded-full pointer-events-none font-bold backdrop-blur-sm">{currentPhotoIndex + 1} de {allPhotos.length}</div>
+                          <img src={allPhotos[currentPhotoIndex]} className="w-full h-full object-cover cursor-pointer" onClick={() => setFullScreenImage(allPhotos[currentPhotoIndex])}/>
+                          <div className="absolute bottom-3 left-1/2 -translate-x-1/2 bg-black/60 text-white text-[10px] px-2 py-0.5 rounded-full font-bold backdrop-blur-sm pointer-events-none">{currentPhotoIndex + 1}/{allPhotos.length}</div>
                           {allPhotos.length > 1 && (
                             <>
-                              <button onClick={(e) => {e.stopPropagation(); prevPhoto();}} className="absolute top-1/2 left-2 -translate-y-1/2 bg-white/80 p-2 rounded-full shadow hover:bg-white text-[#7A1B8F]"><ChevronLeft size={24}/></button>
-                              <button onClick={(e) => {e.stopPropagation(); nextPhoto();}} className="absolute top-1/2 right-2 -translate-y-1/2 bg-white/80 p-2 rounded-full shadow hover:bg-white text-[#7A1B8F]"><ChevronRight size={24}/></button>
+                              <button onClick={(e) => {e.stopPropagation(); prevPhoto();}} className="absolute top-1/2 left-2 -translate-y-1/2 bg-white/80 p-1.5 rounded-full shadow hover:bg-white text-[#7A1B8F]"><ChevronLeft size={20}/></button>
+                              <button onClick={(e) => {e.stopPropagation(); nextPhoto();}} className="absolute top-1/2 right-2 -translate-y-1/2 bg-white/80 p-1.5 rounded-full shadow hover:bg-white text-[#7A1B8F]"><ChevronRight size={20}/></button>
                             </>
                           )}
                         </>
                       ) : <div className="flex items-center justify-center h-full text-slate-400">Sem fotos</div>}
                    </div>
 
-                   {/* Bio */}
-                   <div className="bg-white p-5 rounded-2xl border-2 border-slate-100 shadow-sm relative">
-                      <div className="absolute -top-3 left-4 bg-[#7A1B8F] text-white px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider">Bio / História</div>
-                      <p className="text-slate-600 text-sm italic leading-relaxed pt-2">"{editingCandidato.bio || "Nenhuma bio informada."}"</p>
+                   <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex-1">
+                      <div className="text-[#7A1B8F] text-[10px] font-black uppercase mb-2 flex items-center gap-1"><FileText size={12}/> Bio / História</div>
+                      <p className="text-slate-600 text-xs italic leading-relaxed">"{editingCandidato.bio || "Nenhuma bio informada."}"</p>
                    </div>
                 </div>
 
-                {/* COLUNA DIREITA (DADOS) - SPAN 7 */}
-                <div className="md:col-span-7 space-y-6">
+                {/* COLUNA DIREITA: DADOS ORGANIZADOS */}
+                <div className="lg:col-span-8 flex flex-col gap-4">
                   
-                  {/* Informações Pessoais (COM EMAIL EXPANDIDO) */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                     <InfoItem className="col-span-2" icon={<Mail size={18}/>} label="E-mail" value={editingCandidato.email} />
-                     <InfoItem icon={<InstaIcon size={18}/>} label="Instagram" value={editingCandidato.instagram} />
-                     <InfoItem icon={<User size={18}/>} label="Gênero" value={editingCandidato.genero} />
-                     <InfoItem icon={<Calendar size={18}/>} label="Nascimento" value={editingCandidato.nascimento ? new Date(editingCandidato.nascimento).toLocaleDateString('pt-BR') : '-'} />
-                     <InfoItem icon={<CreditCard size={18}/>} label="CPF/Documento" value={editingCandidato.dados_bancarios?.chave_pix || 'Ver Financeiro'} />
-                     <div className="col-span-2">
-                        <InfoItem icon={<MapPin size={18}/>} label="Endereço Completo" value={`${editingCandidato.endereco || ''}, ${editingCandidato.numero || ''} - ${editingCandidato.bairro || ''} (${editingCandidato.cidade}-${editingCandidato.estado})`} />
-                     </div>
+                  {/* LINHA 1: DADOS PESSOAIS COMPACTOS */}
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                     <InfoItem className="col-span-2 md:col-span-1" icon={<Mail size={16}/>} label="E-mail" value={editingCandidato.email} />
+                     <InfoItem icon={<InstaIcon size={16}/>} label="Instagram" value={editingCandidato.instagram} />
+                     <InfoItem icon={<User size={16}/>} label="Gênero" value={editingCandidato.genero} />
+                     <InfoItem icon={<Calendar size={16}/>} label="Nascimento" value={editingCandidato.nascimento ? new Date(editingCandidato.nascimento).toLocaleDateString('pt-BR') : '-'} />
+                     <InfoItem icon={<CreditCard size={16}/>} label="CPF/Doc" value={editingCandidato.dados_bancarios?.chave_pix || '-'} />
+                     <InfoItem icon={<MapPin size={16}/>} label="Cidade" value={`${editingCandidato.cidade}-${editingCandidato.estado}`} />
                   </div>
 
-                  {/* Financeiro (NOVO CARD) */}
-                  <div className="bg-blue-50/50 p-5 rounded-2xl border-2 border-blue-100">
-                    <h3 className="text-xs font-black text-blue-800 uppercase mb-3 flex items-center gap-2"><DollarSign size={14}/> Dados Financeiros & Pagamento</h3>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div className="bg-white p-3 rounded-xl border border-blue-100">
-                           <span className="text-[10px] text-slate-400 font-bold uppercase block">Método</span>
-                           <span className="text-sm font-bold text-slate-800 capitalize flex items-center gap-2">
-                             {editingCandidato.tipo_pagamento === 'pix' ? '💠 PIX' : '🏦 Transferência'}
-                             {editingCandidato.mei ? <span className="bg-green-100 text-green-700 text-[10px] px-1.5 py-0.5 rounded">MEI Ativo</span> : <span className="bg-slate-100 text-slate-500 text-[10px] px-1.5 py-0.5 rounded">Pessoa Física</span>}
-                           </span>
-                        </div>
-                        <div className="bg-white p-3 rounded-xl border border-blue-100">
-                           <span className="text-[10px] text-slate-400 font-bold uppercase block">{editingCandidato.tipo_pagamento === 'pix' ? 'Chave PIX' : 'Banco'}</span>
-                           <span className="text-sm font-bold text-slate-800 break-all">
-                             {editingCandidato.tipo_pagamento === 'pix' ? (editingCandidato.dados_bancarios?.chave_pix || '-') : (editingCandidato.dados_bancarios?.banco || '-')}
-                           </span>
-                        </div>
-                        {editingCandidato.tipo_pagamento === 'conta' && (
-                           <div className="col-span-2 bg-white p-3 rounded-xl border border-blue-100">
-                              <span className="text-[10px] text-slate-400 font-bold uppercase block">Dados da Conta</span>
-                              <span className="text-sm font-bold text-slate-800">Ag: {editingCandidato.dados_bancarios?.agencia} | CC: {editingCandidato.dados_bancarios?.conta} | Titular: {editingCandidato.dados_bancarios?.titular}</span>
-                           </div>
-                        )}
+                  {/* LINHA 2: FINANCEIRO E ENDEREÇO */}
+                  <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+                    <h3 className="text-xs font-black text-slate-700 uppercase mb-3 flex items-center gap-2"><DollarSign size={14}/> Financeiro & Endereço</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                       <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                          <span className="text-[9px] text-slate-400 font-bold uppercase block mb-1">Pagamento ({editingCandidato.tipo_pagamento})</span>
+                          <span className="text-xs font-bold text-slate-800 block break-all">
+                             {editingCandidato.tipo_pagamento === 'pix' ? `Chave: ${editingCandidato.dados_bancarios?.chave_pix}` : `Bco: ${editingCandidato.dados_bancarios?.banco} | Ag: ${editingCandidato.dados_bancarios?.agencia} | CC: ${editingCandidato.dados_bancarios?.conta}`}
+                          </span>
+                          {editingCandidato.mei && <span className="inline-block mt-1 bg-green-100 text-green-700 text-[9px] px-1.5 py-0.5 rounded font-bold">MEI Ativo</span>}
+                       </div>
+                       <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                          <span className="text-[9px] text-slate-400 font-bold uppercase block mb-1">Endereço Completo</span>
+                          <span className="text-xs font-bold text-slate-800 leading-tight block">
+                             {`${editingCandidato.endereco || ''}, ${editingCandidato.numero || ''} - ${editingCandidato.bairro || ''}, CEP: ${editingCandidato.cep || '-'}`}
+                          </span>
+                       </div>
                     </div>
                   </div>
 
-                  {/* Editáveis */}
-                  <div className="grid grid-cols-1 gap-4">
-                    <div className="bg-purple-50 p-4 rounded-2xl border-2 border-purple-100">
-                      <label className="block text-xs font-black text-[#7A1B8F] uppercase mb-2">Nota 10 (Habilidade) ✏️</label>
-                      <textarea className="w-full p-3 bg-white border border-purple-200 rounded-xl text-sm h-20 outline-none focus:border-[#7A1B8F]"
+                  {/* LINHA 3: CAMPOS EDITÁVEIS (LADO A LADO) */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-auto">
+                    <div className="bg-purple-50 p-3 rounded-2xl border border-purple-100">
+                      <label className="block text-[10px] font-black text-[#7A1B8F] uppercase mb-1">Nota 10 (Habilidade) ✏️</label>
+                      <textarea className="w-full p-2 bg-white border border-purple-200 rounded-lg text-xs h-16 outline-none focus:border-[#7A1B8F]"
                         value={editingCandidato.nota10} onChange={e => editingCandidato && setEditingCandidato({...editingCandidato, nota10: e.target.value})} />
                     </div>
-                    <div className="bg-green-50 p-4 rounded-2xl border-2 border-green-100">
-                      <label className="block text-xs font-black text-green-700 uppercase mb-2 flex items-center gap-2"><Phone size={14}/> WhatsApp (Contato) ✏️</label>
+                    <div className="bg-green-50 p-3 rounded-2xl border border-green-100 flex flex-col justify-between">
+                      <label className="block text-[10px] font-black text-green-700 uppercase mb-1">WhatsApp (Contato) ✏️</label>
                       <div className="flex gap-2">
-                        <input className="flex-1 p-3 bg-white border border-green-200 rounded-xl text-sm font-bold outline-none focus:border-green-500"
+                        <input className="flex-1 p-2 bg-white border border-green-200 rounded-lg text-xs font-bold outline-none focus:border-green-500"
                           value={editingCandidato.whatsapp} onChange={e => editingCandidato && setEditingCandidato({...editingCandidato, whatsapp: e.target.value})} />
-                        <a href={`https://wa.me/55${editingCandidato.whatsapp?.replace(/\D/g, '')}`} target="_blank" className="bg-green-500 hover:bg-green-600 text-white px-4 rounded-xl flex items-center justify-center transition-colors font-bold text-sm">Abrir <Edit size={14} className="ml-1"/></a>
+                        <a href={`https://wa.me/55${editingCandidato.whatsapp?.replace(/\D/g, '')}`} target="_blank" className="bg-green-500 hover:bg-green-600 text-white px-3 rounded-lg flex items-center justify-center transition-colors font-bold text-xs">Abrir</a>
                       </div>
                     </div>
                   </div>
+
                 </div>
               </div>
             </div>
 
             {/* Footer */}
-            <div className="p-4 border-t bg-white flex justify-end gap-3 sticky bottom-0 z-20 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)]">
-              <button onClick={() => setModalOpen(false)} className="px-6 py-3 text-slate-500 font-bold text-sm hover:bg-slate-100 rounded-xl transition-colors">Cancelar</button>
-              <button onClick={handleSaveEdit} className="px-8 py-3 bg-[#7A1B8F] text-white font-bold text-sm rounded-xl flex items-center gap-2 hover:bg-purple-900 shadow-lg transform active:scale-95 transition-all"><Save size={18}/> Salvar Alterações</button>
+            <div className="p-3 border-t bg-white flex justify-end gap-3">
+              <button onClick={() => setModalOpen(false)} className="px-4 py-2 text-slate-500 font-bold text-xs hover:bg-slate-100 rounded-lg">Cancelar</button>
+              <button onClick={handleSaveEdit} className="px-5 py-2 bg-[#7A1B8F] text-white font-bold text-xs rounded-lg flex items-center gap-2 hover:bg-purple-900 shadow-md"><Save size={14}/> Salvar</button>
             </div>
           </div>
         </div>
