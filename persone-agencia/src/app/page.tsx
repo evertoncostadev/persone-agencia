@@ -2,11 +2,17 @@
 
 import React, { useState, useEffect } from 'react';
 import { User, Calendar, MapPin, CreditCard, Sparkles, Camera, AlertCircle, Loader2, Plus, X, Banknote, QrCode, AlertTriangle, Image as ImageIcon, UploadCloud, Trash2, CheckCircle } from 'lucide-react';
+// 1. IMPORTAR O CLIENTE DO SUPABASE (Certifique-se que o arquivo existe em src/lib/supabaseClient.ts)
+import { supabase } from '@/lib/supabaseClient';
 
 export default function CadastroPersone() {
   const [step, setStep] = useState(1);
   const totalSteps = 5;
   const [isSuccess, setIsSuccess] = useState(false);
+  
+  // 2. ESTADO PARA CONTROLAR O LOADING DO ENVIO
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [loadingCep, setLoadingCep] = useState(false);
   
@@ -62,15 +68,7 @@ export default function CadastroPersone() {
   ];
 
   const estadosBrasileiros = [
-    { sigla: 'AC', nome: 'Acre' }, { sigla: 'AL', nome: 'Alagoas' }, { sigla: 'AP', nome: 'Amapá' },
-    { sigla: 'AM', nome: 'Amazonas' }, { sigla: 'BA', nome: 'Bahia' }, { sigla: 'CE', nome: 'Ceará' },
-    { sigla: 'DF', nome: 'Distrito Federal' }, { sigla: 'ES', nome: 'Espírito Santo' }, { sigla: 'GO', nome: 'Goiás' },
-    { sigla: 'MA', nome: 'Maranhão' }, { sigla: 'MT', nome: 'Mato Grosso' }, { sigla: 'MS', nome: 'Mato Grosso do Sul' },
-    { sigla: 'MG', nome: 'Minas Gerais' }, { sigla: 'PA', nome: 'Pará' }, { sigla: 'PB', nome: 'Paraíba' },
-    { sigla: 'PR', nome: 'Paraná' }, { sigla: 'PE', nome: 'Pernambuco' }, { sigla: 'PI', nome: 'Piauí' },
-    { sigla: 'RJ', nome: 'Rio de Janeiro' }, { sigla: 'RN', nome: 'Rio Grande do Norte' }, { sigla: 'RS', nome: 'Rio Grande do Sul' },
-    { sigla: 'RO', nome: 'Rondônia' }, { sigla: 'RR', nome: 'Roraima' }, { sigla: 'SC', nome: 'Santa Catarina' },
-    { sigla: 'SP', nome: 'São Paulo' }, { sigla: 'SE', nome: 'Sergipe' }, { sigla: 'TO', nome: 'Tocantins' }
+    { sigla: 'PB', nome: 'Paraíba' }, { sigla: 'PE', nome: 'Pernambuco' }, { sigla: 'RN', nome: 'Rio Grande do Norte' }, { sigla: 'CE', nome: 'Ceará' }, { sigla: 'AL', nome: 'Alagoas' }, { sigla: 'SE', nome: 'Sergipe' }, { sigla: 'BA', nome: 'Bahia' }, { sigla: 'PI', nome: 'Piauí' }, { sigla: 'MA', nome: 'Maranhão' }, { sigla: 'SP', nome: 'São Paulo' }, { sigla: 'RJ', nome: 'Rio de Janeiro' }, { sigla: 'MG', nome: 'Minas Gerais' }, { sigla: 'ES', nome: 'Espírito Santo' }, { sigla: 'RS', nome: 'Rio Grande do Sul' }, { sigla: 'SC', nome: 'Santa Catarina' }, { sigla: 'PR', nome: 'Paraná' }, { sigla: 'GO', nome: 'Goiás' }, { sigla: 'DF', nome: 'Distrito Federal' }, { sigla: 'MT', nome: 'Mato Grosso' }, { sigla: 'MS', nome: 'Mato Grosso do Sul' }, { sigla: 'AC', nome: 'Acre' }, { sigla: 'AP', nome: 'Amapá' }, { sigla: 'AM', nome: 'Amazonas' }, { sigla: 'PA', nome: 'Pará' }, { sigla: 'RO', nome: 'Rondônia' }, { sigla: 'RR', nome: 'Roraima' }, { sigla: 'TO', nome: 'Tocantins' }
   ];
 
   // --- MÁSCARAS E VALIDAÇÕES ---
@@ -86,7 +84,7 @@ export default function CadastroPersone() {
   const buscarCidadesPorEstado = async (uf: string, setListaDestino: React.Dispatch<React.SetStateAction<string[]>>) => { if (!uf) return; try { const response = await fetch(`https://servicodados.ibge.gov.br/api/v1/localidades/estados/${uf}/municipios`); const data = await response.json(); const nomesCidades = data.map((c: any) => c.nome).sort(); setListaDestino(nomesCidades); } catch (error) { console.error("Erro ao buscar cidades", error); } };
   const buscarCep = async (cep: string) => { const cepLimpo = cep.replace(/\D/g, ''); if (cepLimpo.length !== 8) return; setLoadingCep(true); try { const response = await fetch(`https://viacep.com.br/ws/${cepLimpo}/json/`); const data = await response.json(); if (!data.erro) { setFormData(prev => ({ ...prev, endereco: data.logradouro, bairro: data.bairro, estado: data.uf, cidade: data.localidade })); await buscarCidadesPorEstado(data.uf, setCidadesPrincipal); setErrors(prev => ({ ...prev, cep: '', endereco: '', bairro: '', cidade: '', estado: '' })); } else { setErrors(prev => ({ ...prev, cep: 'CEP não encontrado.' })); } } catch { setErrors(prev => ({ ...prev, cep: 'Erro ao buscar CEP.' })); } finally { setLoadingCep(false); } };
 
-  // --- HANDLERS DE FORMULÁRIO GERAL ---
+  // --- HANDLERS ---
   const handleAddCidadeExtra = () => { if (extraUf && extraCidade && !listaHospedagem.includes(`${extraCidade} - ${extraUf}`)) { const novaLista = [...listaHospedagem, `${extraCidade} - ${extraUf}`]; setListaHospedagem(novaLista); setFormData(prev => ({ ...prev, hospedagem: novaLista.join(', ') })); setExtraCidade(''); } };
   const handleRemoveCidadeExtra = (item: string) => { const novaLista = listaHospedagem.filter(i => i !== item); setListaHospedagem(novaLista); setFormData(prev => ({ ...prev, hospedagem: novaLista.join(', ') })); };
   
@@ -108,7 +106,6 @@ export default function CadastroPersone() {
   const handlePaymentTypeChange = (tipo: string) => { setFormData(prev => ({ ...prev, tipoPagamento: tipo, tipoChavePix: '', chavePix: '', banco: '', bancoOutro: '', agencia: '', contaBancaria: '', titularConta: '' })); setErrors(prev => ({ ...prev, tipoPagamento: '', chavePix: '', banco: '', titularConta: '' })); };
   const toggleIdioma = (idioma: string) => { const atuais = formData.idiomas ? formData.idiomas.split(',').filter(i => i) : []; if (atuais.includes(idioma)) setFormData(prev => ({ ...prev, idiomas: atuais.filter(i => i !== idioma).join(',') })); else setFormData(prev => ({ ...prev, idiomas: [...atuais, idioma].join(',') })); };
 
-  // --- HANDLERS DE FOTOS ---
   const handleProfileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -205,13 +202,106 @@ export default function CadastroPersone() {
     return newErrors;
   };
 
-  const handleNext = () => {
+  // --- 3. FUNÇÃO AUXILIAR PARA UPLOAD DE FOTOS ---
+  const handleUploadImage = async (file: File, bucket: string, path: string) => {
+    // Cria um nome único para o arquivo para não sobrescrever
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${path}-${Math.random()}.${fileExt}`;
+    const filePath = `${fileName}`;
+
+    // Upload
+    const { data, error } = await supabase.storage.from(bucket).upload(filePath, file);
+    if (error) throw error;
+
+    // Pega a URL pública
+    const { data: publicUrlData } = supabase.storage.from(bucket).getPublicUrl(filePath);
+    return publicUrlData.publicUrl;
+  };
+
+  // --- 4. FUNÇÃO HANDLENEXT ATUALIZADA COM O ENVIO ---
+  const handleNext = async () => {
     const currentErrors = validateCurrentStep();
-    if (Object.keys(currentErrors).length > 0) { setErrors(currentErrors); return; }
-    if (step === totalSteps) { 
-      setIsSuccess(true); 
-    } else { 
-      setStep(step + 1); window.scrollTo(0, 0); 
+    if (Object.keys(currentErrors).length > 0) { 
+      setErrors(currentErrors); 
+      return; 
+    }
+
+    if (step === totalSteps) {
+      // INÍCIO DO ENVIO
+      setIsSubmitting(true);
+      try {
+        // A. Upload da Foto de Perfil
+        let fotoPerfilUrl = '';
+        if (fotoPerfil) {
+          fotoPerfilUrl = await handleUploadImage(fotoPerfil, 'fotos-elenco', `perfil-${Date.now()}`);
+        }
+
+        // B. Upload das Fotos Extras (Loop)
+        const fotosExtrasUrls = [];
+        for (let i = 0; i < fotosExtras.length; i++) {
+          const url = await handleUploadImage(fotosExtras[i], 'fotos-elenco', `extra-${i}-${Date.now()}`);
+          fotosExtrasUrls.push(url);
+        }
+
+        // C. Montar o objeto para o Banco de Dados
+        // Nota: Mapeia os campos do React para as colunas do seu SQL
+        const dadosParaSalvar = {
+          nome: formData.nome,
+          email: formData.email,
+          whatsapp: formData.whatsapp,
+          instagram: formData.instagram,
+          genero: formData.genero === 'Outro' ? formData.generoOutro : formData.genero,
+          grupo_vagas: formData.grupo === 'sim',
+          
+          nascimento: formData.nascimento,
+          altura: formData.altura,
+          manequim: formData.manequim,
+          sapato: formData.sapato,
+          idiomas: formData.idiomas,
+          
+          cep: formData.cep,
+          endereco: formData.endereco,
+          numero: formData.numero,
+          bairro: formData.bairro,
+          cidade: formData.cidade,
+          estado: formData.estado,
+          hospedagem_extra: formData.hospedagem,
+          
+          mei: formData.mei === 'sim',
+          tipo_pagamento: formData.tipoPagamento,
+          
+          // Guardamos os detalhes bancários em um JSONB para ficar organizado
+          dados_bancarios: {
+            tipo_pix: formData.tipoChavePix,
+            chave_pix: formData.chavePix,
+            banco: formData.banco === 'Outro' ? formData.bancoOutro : formData.banco,
+            agencia: formData.agencia,
+            conta: formData.contaBancaria,
+            titular: formData.titularConta
+          },
+          
+          nota10: formData.nota10,
+          bio: formData.bio,
+          foto_perfil_url: fotoPerfilUrl,
+          fotos_extras_urls: fotosExtrasUrls
+        };
+
+        // D. Inserir no Supabase
+        const { error } = await supabase.from('candidatos').insert([dadosParaSalvar]);
+
+        if (error) throw error;
+
+        // SUCESSO!
+        setIsSuccess(true);
+      } catch (error) {
+        console.error("Erro ao enviar:", error);
+        alert("Ops! Houve um erro ao enviar seu cadastro. Tente novamente.");
+      } finally {
+        setIsSubmitting(false);
+      }
+    } else {
+      setStep(step + 1);
+      window.scrollTo(0, 0);
     }
   };
 
@@ -222,7 +312,7 @@ export default function CadastroPersone() {
     <div className="min-h-screen bg-slate-200 py-10 px-4 flex items-center justify-center font-sans">
       <div className="max-w-2xl w-full bg-white rounded-3xl shadow-2xl overflow-hidden text-slate-900">
         
-        {/* Header - Oculta se for sucesso */}
+        {/* Header */}
         {!isSuccess && (
           <div className="p-8 bg-[#7A1B8F] text-white text-center">
             <h1 className="text-5xl font-serif font-bold text-[#FFD700] italic mb-2">persone</h1>
@@ -231,25 +321,17 @@ export default function CadastroPersone() {
           </div>
         )}
 
-        {/* TELA DE SUCESSO (RETORNO VISUAL) - AGORA ROXA */}
+        {/* TELA DE SUCESSO - ROXA */}
         {isSuccess ? (
           <div className="p-10 flex flex-col items-center justify-center text-center space-y-6 animate-in zoom-in-95 duration-500 bg-[#7A1B8F]">
-            
-            {/* Ícone com borda amarela */}
             <div className="w-24 h-24 bg-transparent border-4 border-[#FFD700] rounded-full flex items-center justify-center mb-2 shadow-lg shadow-purple-900/50">
               <CheckCircle className="text-[#FFD700]" size={64} />
             </div>
-            
-            {/* Título Amarelo */}
             <h2 className="text-3xl font-serif font-bold text-[#FFD700] italic">Cadastro Recebido!</h2>
-            
-            {/* Texto Branco com Nome Amarelo */}
             <div className="space-y-2 text-white">
               <p>Obrigado, <span className="font-bold text-[#FFD700]">{formData.nome.split(' ')[0]}</span>!</p>
-              <p className="opacity-90">Seus dados foram enviados com sucesso para nossa equipe.</p>
+              <p className="opacity-90">Seus dados foram enviados com sucesso.</p>
             </div>
-
-            {/* Box de Informação Translúcido com Borda Amarela */}
             <div className="bg-white/10 border-2 border-[#FFD700] p-6 rounded-2xl w-full max-w-sm backdrop-blur-sm">
               <div className="flex flex-col gap-2">
                 <span className="text-xs font-bold text-[#FFD700]/80 uppercase tracking-widest">Prazo de Retorno</span>
@@ -257,34 +339,24 @@ export default function CadastroPersone() {
                 <p className="text-xs text-white mt-1 opacity-90">Fique atento ao seu e-mail: <br/><strong className="text-[#FFD700]">{formData.email}</strong></p>
               </div>
             </div>
-
-            {/* Botão Voltar Branco/Amarelo */}
-            <button 
-              onClick={() => window.location.reload()} 
-              className="mt-8 text-white text-xs font-bold uppercase hover:text-[#FFD700] transition-colors tracking-widest"
-            >
-              Voltar ao início
-            </button>
+            <button onClick={() => window.location.reload()} className="mt-8 text-white text-xs font-bold uppercase hover:text-[#FFD700] transition-colors tracking-widest">Voltar ao início</button>
           </div>
         ) : (
-          /* FORMULÁRIO NORMAL */
           <div className="p-8">
             <div className="space-y-6">
               
-              {/* ETAPA 1 */}
+              {/* ETAPAS 1 A 4 (MANTIDAS IGUAIS) */}
               {step === 1 && (
                  <div className="animate-in fade-in slide-in-from-right-4 duration-300 space-y-4">
                  <div className="flex items-center gap-2 text-[#7A1B8F] font-bold uppercase text-xs tracking-widest mb-4"><User size={18}/> Identificação e Contato</div>
                  <div><Label text="Nome Completo (Sem números) *" /><input name="nome" placeholder="Ex: Maria da Silva" onChange={handleChange} value={formData.nome} className={`w-full p-3 border-2 rounded-xl outline-none focus:border-[#7A1B8F] text-slate-800 ${errors.nome ? 'border-red-500' : 'border-slate-300'}`} /><ErrorMsg field="nome" /></div>
                  <div><Label text="Identidade de Gênero *" /><select name="genero" value={formData.genero} onChange={handleChange} className={`w-full p-3 border-2 rounded-xl text-slate-800 bg-white outline-none ${errors.genero ? 'border-red-500' : 'border-slate-300'}`}><option value="">Selecione como se identifica...</option>{listaGeneros.map((gen) => (<option key={gen} value={gen}>{gen}</option>))}</select><ErrorMsg field="genero" /></div>
-                 {formData.genero === "Outro" && (<div className="animate-in fade-in slide-in-from-top-1"><Label text="Como prefere ser identificado? *" /><input name="generoOutro" placeholder="Digite sua identidade de gênero" value={formData.generoOutro} onChange={handleChange} className={`w-full p-3 border-2 rounded-xl text-slate-800 outline-none bg-purple-50 focus:bg-white ${errors.genero ? 'border-red-500' : 'border-slate-300'}`} /></div>)}
+                 {formData.genero === "Outro" && (<div className="animate-in fade-in slide-in-from-top-1"><Label text="Como prefere ser identificado? *" /><input name="generoOutro" placeholder="Digite..." value={formData.generoOutro} onChange={handleChange} className={`w-full p-3 border-2 rounded-xl text-slate-800 outline-none bg-purple-50 focus:bg-white ${errors.genero ? 'border-red-500' : 'border-slate-300'}`} /></div>)}
                  <div><Label text="E-mail *" /><input name="email" placeholder="Ex: maria@gmail.com" type="email" onChange={handleChange} value={formData.email} className={`w-full p-3 border-2 rounded-xl outline-none text-slate-800 ${errors.email ? 'border-red-500' : 'border-slate-300'}`} /><ErrorMsg field="email" /></div>
                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4"><div><Label text="Instagram *" /><input name="instagram" placeholder="Ex: @mariasilva" onChange={handleChange} value={formData.instagram} className={`w-full p-3 border-2 rounded-xl outline-none text-slate-800 ${errors.instagram ? 'border-red-500' : 'border-slate-300'}`} /><ErrorMsg field="instagram" /></div><div><Label text="WhatsApp *" /><input name="whatsapp" placeholder="Ex: (83) 99999-9999" onChange={handleChange} value={formData.whatsapp} className={`w-full p-3 border-2 rounded-xl outline-none text-slate-800 ${errors.whatsapp ? 'border-red-500' : 'border-slate-300'}`} /><ErrorMsg field="whatsapp" /></div></div>
                  <div><Label text="Deseja entrar no Grupo de Vagas? *" /><div className={`p-4 bg-purple-50 rounded-xl border-2 flex justify-between items-center ${errors.grupo ? 'border-red-500' : 'border-purple-100'}`}><span className="text-xs font-bold text-[#7A1B8F]">Selecione:</span><div className="flex gap-4"><label className="flex items-center gap-1 text-sm font-bold cursor-pointer"><input type="radio" name="grupo" value="sim" onChange={handleChange} checked={formData.grupo === 'sim'} className="accent-[#7A1B8F]" /> Sim</label><label className="flex items-center gap-1 text-sm font-bold cursor-pointer"><input type="radio" name="grupo" value="nao" onChange={handleChange} checked={formData.grupo === 'nao'} className="accent-[#7A1B8F]" /> Não</label></div></div><ErrorMsg field="grupo" /></div>
                </div>
               )}
-              
-              {/* ETAPA 2 */}
               {step === 2 && (
                  <div className="animate-in fade-in slide-in-from-right-4 duration-300 space-y-4">
                  <div className="flex items-center gap-2 text-[#7A1B8F] font-bold uppercase text-xs tracking-widest mb-4"><Calendar size={18}/> Perfil e Medidas</div>
@@ -292,8 +364,6 @@ export default function CadastroPersone() {
                  <div><Label text="Idiomas (Opcional)" /><div className="p-4 border-2 border-slate-300 rounded-xl bg-slate-50 flex flex-wrap gap-2">{listaIdiomas.map((idioma) => <button key={idioma} onClick={() => toggleIdioma(idioma)} className={`px-4 py-2 rounded-full text-xs font-bold transition-all border-2 ${formData.idiomas.includes(idioma) ? 'bg-[#7A1B8F] text-[#FFD700] border-[#7A1B8F]' : 'bg-white text-slate-500 border-slate-200 hover:border-[#7A1B8F]'}`}>{idioma}</button>)}</div></div>
                </div>
               )}
-              
-              {/* ETAPA 3 */}
               {step === 3 && (
                  <div className="animate-in fade-in slide-in-from-right-4 duration-300 space-y-4">
                  <div className="flex items-center gap-2 text-[#7A1B8F] font-bold uppercase text-xs tracking-widest mb-4"><MapPin size={18}/> Endereço</div>
@@ -304,36 +374,16 @@ export default function CadastroPersone() {
                  <div className="mt-6 pt-6 border-t-2 border-slate-100"><div className="flex items-center justify-between mb-2"><Label text="Possui Hospedagem em Outras Cidades?" /><span className="text-[10px] text-slate-400 font-bold uppercase bg-slate-100 px-2 py-1 rounded">Opcional</span></div><div className="p-4 bg-purple-50 rounded-2xl border-2 border-purple-100 space-y-3"><div className="grid grid-cols-5 gap-2"><div className="col-span-2"><select value={extraUf} onChange={(e) => {setExtraUf(e.target.value); setExtraCidade(''); buscarCidadesPorEstado(e.target.value, setCidadesExtra);}} className="w-full p-2 border-2 border-slate-300 rounded-xl text-sm text-slate-800 outline-none bg-white"><option value="">UF</option>{estadosBrasileiros.map((uf) => (<option key={uf.sigla} value={uf.sigla}>{uf.sigla}</option>))}</select></div><div className="col-span-3 flex gap-2"><select value={extraCidade} onChange={(e) => setExtraCidade(e.target.value)} disabled={!extraUf} className="w-full p-2 border-2 border-slate-300 rounded-xl text-sm text-slate-800 outline-none bg-white disabled:bg-slate-200"><option value="">{extraUf ? "Selecione a cidade..." : "Selecione UF..."}</option>{cidadesExtra.map((c) => (<option key={c} value={c}>{c}</option>))}</select><button onClick={handleAddCidadeExtra} disabled={!extraCidade} className="bg-[#7A1B8F] text-white p-2 rounded-xl disabled:opacity-50 hover:bg-purple-800 transition-colors"><Plus size={20} /></button></div></div>{listaHospedagem.length > 0 && (<div className="flex flex-wrap gap-2 mt-2">{listaHospedagem.map((item) => (<span key={item} className="flex items-center gap-1 bg-white border border-purple-200 text-[#7A1B8F] px-3 py-1 rounded-full text-xs font-bold shadow-sm">{item}<button onClick={() => handleRemoveCidadeExtra(item)} className="text-slate-400 hover:text-red-500"><X size={14} /></button></span>))}</div>)}</div></div>
                </div>
               )}
-
               {step === 4 && (
                 <div className="animate-in fade-in slide-in-from-right-4 duration-300 space-y-4">
                   <div className="flex items-center gap-2 text-[#7A1B8F] font-bold uppercase text-xs tracking-widest mb-4"><CreditCard size={18}/> Financeiro</div>
                   <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex gap-3"><AlertTriangle className="text-amber-500 shrink-0" size={24} /><div><h3 className="text-sm font-bold text-amber-700 uppercase mb-1">Atenção aos Dados Bancários</h3><p className="text-xs text-amber-800 leading-relaxed text-justify">Certifique-se de que os dados informados estão <strong>exatamente iguais</strong> aos do seu banco. Inconsistências podem resultar em <strong>atrasos</strong> nos pagamentos.</p></div></div>
                   <div><Label text="Possui MEI Ativo? *" /><div className={`p-4 bg-purple-50 rounded-xl border-2 flex flex-col gap-3 ${errors.mei ? 'border-red-500' : 'border-purple-100'}`}><div className="flex gap-6"><label className="flex items-center gap-2 font-bold cursor-pointer"><input type="radio" name="mei" value="sim" onChange={handleChange} checked={formData.mei === 'sim'} className="accent-[#7A1B8F]" /> Sim</label><label className="flex items-center gap-2 font-bold cursor-pointer"><input type="radio" name="mei" value="nao" onChange={handleChange} checked={formData.mei === 'nao'} className="accent-[#7A1B8F]" /> Não</label></div></div><ErrorMsg field="mei" /></div>
                   <div><Label text="Como deseja receber o cachê? *" /><div className="grid grid-cols-2 gap-4"><button onClick={() => handlePaymentTypeChange('pix')} className={`p-4 rounded-xl border-2 flex flex-col items-center justify-center gap-2 transition-all ${formData.tipoPagamento === 'pix' ? 'border-[#7A1B8F] bg-[#7A1B8F] text-white' : 'border-slate-300 text-slate-500 hover:border-[#7A1B8F] hover:text-[#7A1B8F]'}`}><QrCode size={24} /><span className="text-sm font-bold">PIX</span></button><button onClick={() => handlePaymentTypeChange('conta')} className={`p-4 rounded-xl border-2 flex flex-col items-center justify-center gap-2 transition-all ${formData.tipoPagamento === 'conta' ? 'border-[#7A1B8F] bg-[#7A1B8F] text-white' : 'border-slate-300 text-slate-500 hover:border-[#7A1B8F] hover:text-[#7A1B8F]'}`}><Banknote size={24} /><span className="text-sm font-bold">Conta Bancária</span></button></div><ErrorMsg field="tipoPagamento" /></div>
-                  
                   {formData.tipoPagamento === 'pix' && (
                     <div className="animate-in fade-in slide-in-from-top-2 duration-300 space-y-4 p-4 bg-slate-50 rounded-xl border-2 border-slate-200">
                       <div><Label text="Tipo de Chave PIX *" /><select name="tipoChavePix" value={formData.tipoChavePix} onChange={(e) => setFormData(prev => ({ ...prev, tipoChavePix: e.target.value, chavePix: '' }))} className={`w-full p-3 border-2 rounded-xl text-slate-800 bg-white outline-none ${errors.tipoChavePix ? 'border-red-500' : 'border-slate-300'}`}><option value="">Selecione o tipo...</option><option value="cpf">CPF</option><option value="email">E-mail</option><option value="telefone">Celular / Telefone</option><option value="aleatoria">Chave Aleatória</option></select><ErrorMsg field="tipoChavePix" /></div>
-                      
-                      {formData.tipoChavePix && (
-                        <div>
-                          <Label text={`Digite sua chave (${formData.tipoChavePix.toUpperCase()}) *`} />
-                          <input 
-                            name="chavePix" 
-                            placeholder={
-                              formData.tipoChavePix === 'aleatoria' ? 'Cole a chave aleatória (UUID)' : 
-                              formData.tipoChavePix === 'email' ? 'exemplo@email.com' : 
-                              formData.tipoChavePix === 'telefone' ? 'Ex: (83) 99999-9999' : 
-                              'Ex: 000.000.000-00'
-                            } 
-                            value={formData.chavePix} 
-                            onChange={handleChange} 
-                            className={`w-full p-3 border-2 rounded-xl text-slate-800 outline-none ${errors.chavePix ? 'border-red-500' : 'border-slate-300'}`} 
-                          />
-                          <ErrorMsg field="chavePix" />
-                        </div>
-                      )}
+                      {formData.tipoChavePix && (<div><Label text={`Digite sua chave (${formData.tipoChavePix.toUpperCase()}) *`} /><input name="chavePix" placeholder={formData.tipoChavePix === 'aleatoria' ? 'Cole a chave aleatória (UUID)' : formData.tipoChavePix === 'email' ? 'exemplo@email.com' : formData.tipoChavePix === 'telefone' ? 'Ex: (83) 99999-9999' : 'Ex: 000.000.000-00'} value={formData.chavePix} onChange={handleChange} className={`w-full p-3 border-2 rounded-xl text-slate-800 outline-none ${errors.chavePix ? 'border-red-500' : 'border-slate-300'}`} /><ErrorMsg field="chavePix" /></div>)}
                       <div><Label text="Nome Completo do Titular (Sem números) *" /><input name="titularConta" placeholder="Ex: Maria da Silva" value={formData.titularConta} onChange={handleChange} className={`w-full p-3 border-2 rounded-xl text-slate-800 outline-none ${errors.titularConta ? 'border-red-500' : 'border-slate-300'}`} /><ErrorMsg field="titularConta" /></div>
                     </div>
                   )}
@@ -360,8 +410,19 @@ export default function CadastroPersone() {
               )}
 
               <div className="pt-6 space-y-4">
-                <button onClick={handleNext} className={`w-full p-4 rounded-xl font-black text-lg uppercase tracking-widest transition-all bg-[#FFD700] text-[#7A1B8F] shadow-xl hover:scale-[1.01]`}>{step === totalSteps ? "Enviar Cadastro" : "Próximo Passo"}</button>
-                {step > 1 && (<button onClick={() => setStep(step - 1)} className="w-full text-slate-400 font-bold text-xs uppercase text-center hover:text-slate-600">Voltar</button>)}
+                <button 
+                  onClick={handleNext} 
+                  disabled={isSubmitting} 
+                  className={`w-full p-4 rounded-xl font-black text-lg uppercase tracking-widest transition-all shadow-xl hover:scale-[1.01] flex items-center justify-center gap-2 
+                    ${isSubmitting ? 'bg-gray-300 text-gray-500 cursor-not-allowed' : 'bg-[#FFD700] text-[#7A1B8F]'}`}
+                >
+                  {isSubmitting ? (
+                    <><Loader2 className="animate-spin" /> Enviando...</>
+                  ) : (
+                    step === totalSteps ? "Enviar Cadastro" : "Próximo Passo"
+                  )}
+                </button>
+                {step > 1 && !isSubmitting && (<button onClick={() => setStep(step - 1)} className="w-full text-slate-400 font-bold text-xs uppercase text-center hover:text-slate-600">Voltar</button>)}
               </div>
             </div>
           </div>
